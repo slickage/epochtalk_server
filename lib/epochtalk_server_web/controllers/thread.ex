@@ -348,6 +348,7 @@ defmodule EpochtalkServerWeb.Controllers.Thread do
     if moderated,
       do: :ok == ACL.allow!(user, "threads.moderated"),
       else: true
+  end
   defp check_proxy(conn, _) do
     conn =
       case conn.private.phoenix_action do
