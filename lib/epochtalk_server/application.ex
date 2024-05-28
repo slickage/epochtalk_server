@@ -19,6 +19,8 @@ defmodule EpochtalkServer.Application do
       {Redix, host: redix_config()[:host], name: redix_config()[:name]},
       # Start the Ecto repository
       EpochtalkServer.Repo,
+      # Start Config Server
+      EpochtalkServer.ConfigServer,
       # Start the Smf repository
       EpochtalkServer.SmfRepo,
       # Start Role Cache
