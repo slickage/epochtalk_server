@@ -28,6 +28,15 @@ if config_env() == :prod do
       For example: ecto://USER:PASS@HOST/DATABASE
       """
 
+  logger_level =
+    System.get_env("LOGGER_LEVEL")
+    |> case do
+      "DEBUG" -> :debug
+      _ -> :info
+    end
+
+  config :logger, level: logger_level
+
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
   config :epochtalk_server, EpochtalkServer.Repo,
@@ -160,6 +169,42 @@ if config_env() == :prod do
       path: System.get_env("S3_PATH") || "images/"
   end
 
+  # Configure SmfRepo for proxy
+  smf_repo_username =
+    System.get_env("SMF_REPO_USERNAME") ||
+      raise """
+      environment variable SMF_REPO_USERNAME is missing.
+      """
+
+  smf_repo_password =
+    System.get_env("SMF_REPO_PASSWORD") ||
+      raise """
+      environment variable SMF_REPO_PASSWORD is missing.
+      """
+
+  smf_repo_hostname =
+    System.get_env("SMF_REPO_HOSTNAME") ||
+      raise """
+      environment variable SMF_REPO_HOSTNAME is missing.
+      """
+
+  smf_repo_database =
+    System.get_env("SMF_REPO_DATABASE") ||
+      raise """
+      environment variable SMF_REPO_DATABASE is missing.
+      """
+
+  config :epochtalk_server, EpochtalkServer.SmfRepo,
+    username: smf_repo_username,
+    password: smf_repo_password,
+    hostname: smf_repo_hostname,
+    database: smf_repo_database,
+    port: String.to_integer(System.get_env("SMF_REPO_PORT") || "3306"),
+    stacktrace: System.get_env("SMF_REPO_STACKTRACE") || true,
+    show_sensitive_data_on_connection_error:
+      System.get_env("SMF_REPO_SENSITIVE_DATA_ON_ERROR") || false,
+    pool_size: String.to_integer(System.get_env("SMF_REPO_POOL_SIZE") || "10")
+
   # Configure Guardian for Runtime
   config :epochtalk_server, EpochtalkServer.Auth.Guardian,
     secret_key:
@@ -177,6 +222,25 @@ if config_env() == :prod do
 
   # Configure Redis for Session Storage
   config :epochtalk_server, :redix, host: System.get_env("REDIS_HOST") || "127.0.0.1"
+
+  id_board_blacklist =
+    System.get_env("ID_BOARD_BLACKLIST") ||
+      raise """
+      environment variable ID_BOARD_BLACKLIST is missing.
+      """
+
+  id_board_blacklist =
+    id_board_blacklist
+    |> String.split()
+    |> Enum.map(&(String.to_integer(&1)))
+
+  # Configure proxy
+  config :epochtalk_server,
+    proxy_config: %{
+      threads_seq: System.get_env("THREADS_SEQ") || "6000000",
+      boards_seq: System.get_env("BOARDS_SEQ") || "500",
+      id_board_blacklist: id_board_blacklist
+    }
 
   # Configure frontend
   config :epochtalk_server,
