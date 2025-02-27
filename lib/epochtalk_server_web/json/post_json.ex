@@ -151,7 +151,7 @@ defmodule EpochtalkServerWeb.Controllers.PostJSON do
     # format post data
     posts =
       posts
-      |> format_proxy_posts_for_by_thread()
+      |> format_proxy_posts_for_by_thread_without_signature()
 
     # build by_thread results
     %{
