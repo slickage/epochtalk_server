@@ -47,6 +47,13 @@ defmodule EpochtalkServer.BBCParser do
     {:reply, parsed, {proc, pid}}
   end
 
+  def handle_call({:parse_list, list}, _from, {proc, pid}) do
+    Logger.debug("#{__MODULE__}(start parse list): #{NaiveDateTime.utc_now()}")
+    parsed = parse_list_with_proc(list, {proc, pid})
+    Logger.debug("#{__MODULE__}(finish parse list): #{NaiveDateTime.utc_now()}")
+    {:reply, {:ok, parsed}, {proc, pid}}
+  end
+
   def handle_call({:parse_list_tuple, {left_list, right_list}}, _from, {proc, pid}) do
     Logger.debug("#{__MODULE__}(start parse list tuple): #{NaiveDateTime.utc_now()}")
     parsed = parse_list_tuple_with_proc({left_list, right_list}, {proc, pid})
