@@ -6,6 +6,7 @@ defmodule EpochtalkServer.BBCParser do
   # genserver call timeouts (ms)
   @genserver_parse_timeout 5000
   @genserver_parse_tuple_timeout 5000
+  @genserver_parse_list_timeout 5000
 
   # poolboy timeout (ms)
   @poolboy_transaction_timeout 5000
