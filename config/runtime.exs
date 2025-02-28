@@ -374,10 +374,15 @@ corsica_config_origins =
       get_env_or_raise_with_message.(
         "CORS_ORIGINS",
         """
+        This env config gets compiled into regex
+
         For example:
+        CORS_ORIGINS='^https?://(.*\.)?epochtalk\.com$'
+        becomes
         ~r{^https?://(.*\.)?epochtalk\.com$}
         """
       )
+      |> Regex.compile!()
 
     _ ->
       "*"
