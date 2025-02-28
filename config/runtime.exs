@@ -1,5 +1,5 @@
 import Config
-import Logger
+require Logger
 
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
@@ -377,10 +377,15 @@ corsica_config_origins =
       get_env_or_raise_with_message.(
         "CORS_ORIGINS",
         """
+        This env config gets compiled into regex
+
         For example:
+        CORS_ORIGINS='^https?://(.*\.)?epochtalk\.com$'
+        becomes
         ~r{^https?://(.*\.)?epochtalk\.com$}
         """
       )
+      |> Regex.compile!()
 
     _ ->
       "*"
@@ -389,6 +394,8 @@ corsica_config_origins =
 corsica_config = %{
   origins: corsica_config_origins
 }
+
+Logger.info("corsica_config: #{inspect(corsica_config)}")
 
 config :epochtalk_server, :corsica, corsica_config
 
