@@ -6,6 +6,7 @@ defmodule EpochtalkServer.BBCParser do
   # genserver call timeouts (ms)
   @genserver_parse_timeout 5000
   @genserver_parse_tuple_timeout 5000
+  @genserver_parse_list_timeout 5000
 
   # poolboy timeout (ms)
   @poolboy_transaction_timeout 5000
@@ -45,6 +46,13 @@ defmodule EpochtalkServer.BBCParser do
     )
 
     {:reply, parsed, {proc, pid}}
+  end
+
+  def handle_call({:parse_list, list}, _from, {proc, pid}) do
+    Logger.debug("#{__MODULE__}(start parse list): #{NaiveDateTime.utc_now()}")
+    parsed = parse_list_with_proc(list, {proc, pid})
+    Logger.debug("#{__MODULE__}(finish parse list): #{NaiveDateTime.utc_now()}")
+    {:reply, {:ok, parsed}, {proc, pid}}
   end
 
   def handle_call({:parse_list_tuple, {left_list, right_list}}, _from, {proc, pid}) do
@@ -124,6 +132,33 @@ defmodule EpochtalkServer.BBCParser do
   @doc """
   Uses poolboy to call parser
   """
+  def parse_list(bbcode_data) do
+    :poolboy.transaction(
+      :bbc_parser,
+      fn pid ->
+        try do
+          Logger.debug("#{__MODULE__}(parse list): #{inspect(pid)}")
+
+          GenServer.call(
+            pid,
+            {:parse_list, bbcode_data},
+            @genserver_parse_list_timeout
+          )
+        catch
+          e, r ->
+            # something went wrong, log the error
+            Logger.error(
+              "#{__MODULE__}(parse poolboy): #{inspect(pid)}, #{inspect(e)}, #{inspect(r)}"
+            )
+
+            bbcode_data = bbcode_data |> Enum.map(&{:timeout, &1})
+            {:error, bbcode_data}
+        end
+      end,
+      @poolboy_transaction_timeout
+    )
+  end
+
   def parse_list_tuple({left_bbcode_data, right_bbcode_data}) do
     :poolboy.transaction(
       :bbc_parser,
