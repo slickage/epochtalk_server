@@ -500,7 +500,6 @@ defmodule EpochtalkServer.SmfQuery do
       user: %{
         id: m.id_member,
         username: u.realName,
-        signature: u.signature,
         activity: u.activity,
         merit: u.merit,
         title: u.usertitle

@@ -151,7 +151,7 @@ defmodule EpochtalkServerWeb.Controllers.PostJSON do
     # format post data
     posts =
       posts
-      |> format_proxy_posts_for_by_thread()
+      |> format_proxy_posts_for_by_thread_without_signature()
 
     # build by_thread results
     %{
@@ -453,6 +453,95 @@ defmodule EpochtalkServerWeb.Controllers.PostJSON do
     |> Map.delete(:signature)
     |> Map.delete(:highlight_color)
     |> Map.delete(:role_name)
+  end
+
+  defp format_proxy_posts_for_by_thread_without_signature(posts) do
+    # extract body/signature lists from posts
+    body_list =
+      posts
+      |> Enum.reduce([], fn post, body_list ->
+        if EpochtalkServer.Cache.ParsedPosts.need_update(post.id, post) do
+          body = String.replace(Map.get(post, :body) || Map.get(post, :body_html), "'", "\'")
+
+          # add space to end if the last character is a backslash (fix for parser)
+          body_len = String.length(body)
+          last_char = String.slice(body, (body_len - 1)..body_len)
+          body = if last_char == "\\", do: body <> " ", else: body
+
+          # return body list in reverse order
+          [body | body_list]
+        else
+          [nil | body_list]
+        end
+      end)
+
+    # reverse body list
+    body_list = Enum.reverse(body_list)
+
+    # parse body/signature lists
+    parsed_body_list =
+      body_list
+      |> EpochtalkServer.BBCParser.parse_list()
+      |> case do
+        {:ok, parsed_list} ->
+          parsed_list
+
+        {:error, unparsed_list} ->
+          Logger.error("#{__MODULE__}(list parse): #{inspect(unparsed_list)}")
+          unparsed_list
+      end
+
+    zip_posts_without_signature(posts, parsed_body_list)
+  end
+
+  defp zip_posts_without_signature(posts, parsed_body_list) do
+    # zip posts with body lists
+    zipped_posts =
+      Enum.zip_with(
+        [posts, parsed_body_list],
+        fn [post, parsed_body] ->
+          parsed_body =
+            case parsed_body do
+              {:ok, parsed_body} ->
+                Logger.debug("#{__MODULE__}(body): post_id #{inspect(post.id)}")
+                parsed_body
+
+              {:timeout, unparsed_body} ->
+                Logger.error("#{__MODULE__}(body timeout): post_id #{inspect(post.id)}")
+                unparsed_body
+            end
+
+          post =
+            if parsed_body do
+              # post was parsed, store it in cache
+              EpochtalkServer.Cache.ParsedPosts.put(post.id, %{
+                body_html: parsed_body,
+                updated_at: post.updated_at
+              })
+
+              post
+              |> Map.put(:body_html, parsed_body)
+            else
+              # post was not parsed, get value from cache
+              post =
+                case EpochtalkServer.Cache.ParsedPosts.get(post.id) do
+                  {:ok, cached_post} ->
+                    post
+                    |> Map.put(:body_html, cached_post.body_html)
+
+                  {:error, _} ->
+                    nil
+                end
+
+              post
+            end
+
+          post
+        end
+      )
+
+    EpochtalkServer.Cache.ParsedPosts.lookup_and_purge()
+    zipped_posts
   end
 
   defp format_proxy_posts_for_by_thread(posts) do
