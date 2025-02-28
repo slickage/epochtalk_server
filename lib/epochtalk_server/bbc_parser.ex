@@ -158,6 +158,7 @@ defmodule EpochtalkServer.BBCParser do
       @poolboy_transaction_timeout
     )
   end
+
   def parse_list_tuple({left_bbcode_data, right_bbcode_data}) do
     :poolboy.transaction(
       :bbc_parser,
