@@ -6,7 +6,7 @@ defmodule EpochtalkServer.Cache.ParsedPosts do
   @table_name :parsed_posts
   @max_size 10_000
   @purge_size 1000
-  @expiry_days 30
+  @expiry_days 1
 
   @moduledoc """
   `ParsedPosts` cache genserver, used to cache parsed post data in a table in ETS
